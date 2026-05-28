@@ -200,14 +200,14 @@
         
         groundY = canvas.height - 150;
         
-        // 即時更新物件防錯
+        // 即時更新物件防錯 (必須確定 player 已經建立才能呼叫屬性)
         if (typeof player !== 'undefined' && player.isGrounded) player.y = groundY - player.height;
         if (typeof boss !== 'undefined' && boss.active) {
             boss.targetY = groundY - 450;
             if (boss.state === 'active') boss.y = boss.targetY;
         }
     }
-    window.addEventListener('resize', resize); resize();
+    // ⚠️ 注意：移除了這行原本在頂端的 window.addEventListener('resize', resize); resize(); 以避免變數未宣告的致命錯誤
 
     function drawSprite(key, x, y, w, h, flip = false, fallbackEmoji = '👩🏻‍💻') {
         const img = imgs[key];
@@ -305,6 +305,7 @@
 
     const keys = { left: false, right: false, jump: false, attack: false };
 
+    // --- 變數宣告完畢 ---
     const player = {
         x: 100, y: 0, width: 120, height: 120, vx: 0, vy: 0, speed: 7, jumpPower: -18, gravity: 0.9,
         isGrounded: true, isAttacking: false, attackTimer: 0,
@@ -312,6 +313,10 @@
     };
 
     let mushrooms = [], particles = [], floatingTexts = [], npcs = [], eventTriggers = [], boss = { active: false };
+
+    // ⚠️ 致命 Bug 修復：將 resize 綁定與執行移到所有變數宣告完畢之後，確保程式不會因為讀不到 player 而死當。
+    window.addEventListener('resize', resize);
+    resize(); 
 
     function initGame() {
         initAudio(); 
