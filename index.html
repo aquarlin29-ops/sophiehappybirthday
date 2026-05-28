@@ -41,7 +41,8 @@
         .happy-birthday { color: #FFEB3B; font-size: 3.5rem; font-weight: 900; text-shadow: 4px 4px 0 #E91E63; }
         .signature { font-size: 1.3rem; color: #FFF; text-align: right; margin-top: 15px; border-top: 2px dashed #FFF; padding-top: 10px; }
 
-        #dialogBox { position: absolute; bottom: 120px; left: 50%; transform: translateX(-50%); width: 90%; max-width: 600px; background: rgba(255, 255, 255, 0.95); border: 5px solid #333; border-radius: 20px; padding: 20px; color: #333; font-size: 1.5rem; font-weight: bold; text-align: left; box-shadow: 0 10px 25px rgba(0,0,0,0.5); z-index: 60; display: none; }
+        /* 【優化1】對話框上移：改為 top: 130px，確保不遮擋人物，也不干擾頂部的血條 */
+        #dialogBox { position: absolute; top: 130px; left: 50%; transform: translateX(-50%); width: 90%; max-width: 600px; background: rgba(255, 255, 255, 0.95); border: 5px solid #333; border-radius: 20px; padding: 20px; color: #333; font-size: 1.5rem; font-weight: bold; text-align: left; box-shadow: 0 10px 25px rgba(0,0,0,0.5); z-index: 60; display: none; }
         #dialogName { color: #E91E63; margin-bottom: 10px; font-size: 1.2rem; }
 
         #glitchOverlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: repeating-linear-gradient(0deg, rgba(0,0,0,0.15), rgba(0,0,0,0.15) 1px, transparent 1px, transparent 2px); pointer-events: none; z-index: 90; opacity: 0; }
@@ -116,7 +117,7 @@
     <!-- 開始畫面 -->
     <div id="startScreen" class="screen">
         <canvas id="bgCanvas"></canvas>
-        <h1 style="position: relative; z-index: 10;">Sophie的皮克敏<br>王國大冒險</h1>
+        <h1 style="position: relative; z-index: 10;">Sophie的皮克敏<br>王大冒險</h1>
         <p style="color: #FFF; position: relative; z-index: 10;">今天是妳的生日！🎂<br>準備好專屬技能開路了嗎？</p>
         
         <div class="instructions desktop-inst" style="position: relative; z-index: 10;">
@@ -193,19 +194,32 @@
             // 手機版：強制縮放使大物件完整可見
             canvas.width = 1000;
             canvas.height = window.innerHeight * (1000 / window.innerWidth);
+            // 【優化2】手機版地平線抬高，避開操作按鍵
+            groundY = canvas.height - 350; 
         } else {
             // 電腦版：維持 1:1 像素映射不變
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
+            // 電腦版維持原地平線高度
+            groundY = canvas.height - 150;
         }
         
-        groundY = canvas.height - 150;
-        
-        // 即時更新物件防錯
+        // 即時更新物件防錯 (確保縮放或旋轉螢幕時，角色跟著地平線移動)
         if (typeof player !== 'undefined' && player.isGrounded) player.y = groundY - player.height;
         if (typeof boss !== 'undefined' && boss.active) {
             boss.targetY = groundY - 450;
             if (boss.state === 'active') boss.y = boss.targetY;
+        }
+        if (typeof mushrooms !== 'undefined' && mushrooms.length > 0) {
+            mushrooms[0].y = groundY - 80;
+            mushrooms[1].y = groundY - 80;
+            mushrooms[2].y = groundY - 180;
+            mushrooms[3].y = groundY - 80;
+        }
+        if (typeof npcs !== 'undefined' && npcs.length > 0) {
+            npcs[0].y = groundY - 150;
+            npcs[1].targetY = groundY - 150;
+            if(npcs[1].active && npcs[1].y >= groundY - 150) npcs[1].y = groundY - 150;
         }
     }
 
@@ -359,7 +373,7 @@
         bossHealthContainer.classList.add('hidden');
         dialogBox.style.display = 'none';
         
-        // 確保手機版按鈕正確顯示 (電腦版由CSS的!important機制保護，絕對不會被這行影響)
+        // 確保手機版按鈕正確顯示
         mobileControls.classList.remove('hidden');
         
         requestAnimationFrame(gameLoop);
