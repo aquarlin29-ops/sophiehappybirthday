@@ -88,7 +88,7 @@
         <h1 style="position: relative; z-index: 10;">Sophie的皮克敏<br>王國大冒險</h1>
         <p style="color: #FFF; position: relative; z-index: 10;">今天是妳的生日！🎂<br>準備好專屬技能開路了嗎？</p>
         
-        <!-- 新增：清楚的操作說明 -->
+        <!-- 清楚的操作說明 -->
         <div class="instructions desktop-inst" style="position: relative; z-index: 10;">
             ⌨️ 遊戲操作：<br>
             [方向鍵] 移動 / [空白鍵] 跳躍 / [Z鍵 或 Enter] 攻擊
@@ -123,13 +123,12 @@
 
 <script>
     // --- 圖片載入系統 (直接讀取同目錄) ---
-    // 修正點：分開定義「大聲公道具」和「一般蘑菇敵人」
     const imgUrls = {
         'tech_power': './tech_power.png',
         'sophie': './sophie.png',
         'pink_sophie': './pink_sophie.png',
-        'megaphone': './mushroom.png',  // 這是您企劃書中的「拾獲大聲公皮友幫打菇+3」的圖片
-        'mushroom_enemy': '',           // 這是擋在路上的蘑菇敵人，目前沒有特定圖片，稍後用畫的或 Emoji
+        'megaphone': './mushroom.png',  // 大聲公皮友幫打菇圖檔
+        'mushroom_enemy': '',           // 蘑菇敵人 (留空以使用 🍄 Emoji 替代)
         'ruth': './ruth.png',
         'party_walk': './party_walk.png',
         '5_tickets': './5_tickets.png',
@@ -168,7 +167,7 @@
         if (flip) {
             ctx.translate(x + w, y);
             ctx.scale(-1, 1);
-            x = 0; // translate 後 x 歸零
+            x = 0; // 反轉後 x 歸零
         }
         
         if (img && img.complete && img.naturalWidth > 0) {
@@ -181,11 +180,10 @@
         ctx.restore();
     }
 
-    // --- 音效與 BGM 系統 ---
+    // --- 音效與 BGM 系統 (完整修復版本) ---
     const AudioContext = window.AudioContext || window.webkitAudioContext;
     let audioCtx;
     let currentBGM = null;
-    let isMusicPlaying = false;
 
     function initAudio() {
         if (!audioCtx) audioCtx = new AudioContext();
@@ -218,7 +216,7 @@
             speed = 300;
         } else if (type === 'party') {
             notes = [523, 523, 659, 784, 523, 523, 659, 784, 880, 784];
-            speed = 150; // Party 更快
+            speed = 150; // Party 音樂節奏加快
         } else if (type === 'boss') {
             notes = [130, 146, 130, 146, 164, 146, 130, 100];
             speed = 200; // 低沉緊張
@@ -231,28 +229,28 @@
             playTone(notes[step % notes.length], (type==='boss'?'sawtooth':'square'), speed/1000, 0.05);
             step++;
         }, speed);
-        playTone(150, 'sawtooth', 0.1, 0.1); playTone(100, 'square', 0.1, 0.1); 
     }
 
-    // 將 break 拆分出來，避免重複宣告
-    sfx.break = () => { 
-        playTone(80, 'sawtooth', 0.3, 0.15); playTone(50, 'square', 0.4, 0.15); 
-    }
-    
-    sfx.powerup = () => { [400, 500, 600, 800].forEach((f, i) => setTimeout(() => playTone(f, 'sine', 0.1, 0.1), i*100)); };
-    sfx.error = () => { playTone(100, 'sawtooth', 0.5, 0.2); playTone(120, 'square', 0.5, 0.2); };
-    sfx.win = () => { 
-        playBGM('stop'); // 停止背景音
-        // 完整版生日快樂歌
-        const t0 = audioCtx.currentTime + 0.1;
-        const tempo = 0.3; 
-        const notes = [
-            {f:392, d:0.5, w:0}, {f:392, d:0.5, w:0.5}, {f:440, d:1.0, w:1}, {f:392, d:1.0, w:2}, {f:523, d:1.0, w:3}, {f:494, d:2.0, w:4},
-            {f:392, d:0.5, w:6}, {f:392, d:0.5, w:6.5}, {f:440, d:1.0, w:7}, {f:392, d:1.0, w:8}, {f:587, d:1.0, w:9}, {f:523, d:2.0, w:10},
-            {f:392, d:0.5, w:12}, {f:392, d:0.5, w:12.5}, {f:784, d:1.0, w:13}, {f:659, d:1.0, w:14}, {f:523, d:1.0, w:15}, {f:494, d:1.0, w:16}, {f:440, d:1.5, w:17},
-            {f:698, d:0.5, w:19}, {f:698, d:0.5, w:19.5}, {f:659, d:1.0, w:20}, {f:523, d:1.0, w:21}, {f:587, d:1.0, w:22}, {f:523, d:2.5, w:23}
-        ];
-        notes.forEach(n => playTone(n.f, 'square', n.d * tempo, 0.15, t0 + n.w * tempo));
+    // 建立完整的音效物件 (這是按鈕能否順利運作的關鍵)
+    const sfx = {
+        jump: () => playTone(300, 'square', 0.2, 0.05),
+        hit: () => { playTone(150, 'sawtooth', 0.1, 0.1); playTone(100, 'square', 0.1, 0.1); },
+        break: () => { playTone(80, 'sawtooth', 0.3, 0.15); playTone(50, 'square', 0.4, 0.15); },
+        powerup: () => { [400, 500, 600, 800].forEach((f, i) => setTimeout(() => playTone(f, 'sine', 0.1, 0.1), i*100)); },
+        error: () => { playTone(100, 'sawtooth', 0.5, 0.2); playTone(120, 'square', 0.5, 0.2); },
+        win: () => { 
+            playBGM('stop'); // 停止背景音
+            // 完整版生日快樂歌
+            const t0 = audioCtx.currentTime + 0.1;
+            const tempo = 0.3; 
+            const notes = [
+                {f:392, d:0.5, w:0}, {f:392, d:0.5, w:0.5}, {f:440, d:1.0, w:1}, {f:392, d:1.0, w:2}, {f:523, d:1.0, w:3}, {f:494, d:2.0, w:4},
+                {f:392, d:0.5, w:6}, {f:392, d:0.5, w:6.5}, {f:440, d:1.0, w:7}, {f:392, d:1.0, w:8}, {f:587, d:1.0, w:9}, {f:523, d:2.0, w:10},
+                {f:392, d:0.5, w:12}, {f:392, d:0.5, w:12.5}, {f:784, d:1.0, w:13}, {f:659, d:1.0, w:14}, {f:523, d:1.0, w:15}, {f:494, d:1.0, w:16}, {f:440, d:1.5, w:17},
+                {f:698, d:0.5, w:19}, {f:698, d:0.5, w:19.5}, {f:659, d:1.0, w:20}, {f:523, d:1.0, w:21}, {f:587, d:1.0, w:22}, {f:523, d:2.5, w:23}
+            ];
+            notes.forEach(n => playTone(n.f, 'square', n.d * tempo, 0.15, t0 + n.w * tempo));
+        }
     };
 
     // --- 遊戲核心變數 ---
@@ -260,10 +258,11 @@
     let cameraX = 0;
     let groundY = canvas.height - 150;
     let screenShake = 0;
+    let showMegaphoneEffect = false; // 用於安全顯示大聲公特效
 
     const keys = { left: false, right: false, jump: false, attack: false };
 
-    // 改善點 4: 放大主角尺寸
+    // 放大的主角尺寸
     const player = {
         x: 100, y: 0, width: 120, height: 120, vx: 0, vy: 0, speed: 7, jumpPower: -18, gravity: 0.9,
         isGrounded: true, isAttacking: false, attackTimer: 0,
@@ -272,8 +271,9 @@
 
     let mushrooms = [], particles = [], floatingTexts = [], npcs = [], eventTriggers = [], boss = { active: false };
 
+    // --- 初始化與開始遊戲 ---
     function initGame() {
-        initAudio(); // 授權啟動音效
+        initAudio(); // 授權啟動音效 (解決無聲問題的關鍵)
         playBGM('normal'); // 開始播放一般 BGM
 
         groundY = canvas.height - 150;
@@ -284,8 +284,9 @@
         player.width = 120; player.height = 120;
         player.currentKey = 'pink_sophie';
         cameraX = 0; screenShake = 0;
+        showMegaphoneEffect = false;
 
-        // 修正點：重新配置關卡實體
+        // 配置關卡實體
         mushrooms = [
             { x: 800, y: groundY - 80, w: 80, h: 80, hp: 1, active: true, size: 80, hitTimer: 0 },
             { x: 1200, y: groundY - 80, w: 80, h: 80, hp: 1, active: true, size: 80, hitTimer: 0 },
@@ -293,6 +294,7 @@
             { x: 2000, y: groundY - 80, w: 80, h: 80, hp: 1, active: true, size: 80, hitTimer: 0 }
         ];
 
+        // 放大 Ruth 與仙子尺寸
         npcs = [
             { id: 'ruth', x: 2500, y: groundY - 150, w: 150, h: 150, emoji: '🧢👍', name: 'GEG祖媽 Ruth', active: true, key: 'ruth' },
             { id: 'cylin', x: 4200, y: -200, targetY: groundY - 150, w: 150, h: 150, emoji: '🧚‍♀️✨', name: '仙子 CY Lin', active: false, key: 'double' } 
@@ -300,7 +302,7 @@
 
         boss = { x: 5500, y: -500, targetY: groundY - 450, width: 450, height: 450, maxHp: 30, hp: 30, active: false, hitTimer: 0, state: 'waiting' };
 
-        // 修正點：加入拾獲大聲公的觸發器
+        // 觸發器位置
         eventTriggers = [
             { x: 1400, id: 'trigger_megaphone', done: false }, // 放在兩個蘑菇之間
             { x: 2400, id: 'trigger_ruth', done: false },
@@ -318,6 +320,10 @@
         
         requestAnimationFrame(gameLoop);
     }
+
+    // 綁定按鈕事件 (確保開始遊戲按鈕順利執行)
+    document.getElementById('startBtn').addEventListener('click', initGame);
+    document.getElementById('restartBtn').addEventListener('click', () => location.reload());
 
     // --- 輸入處理 ---
     window.addEventListener('keydown', (e) => {
@@ -342,9 +348,7 @@
     addTouch('btnJump', () => { if(gameState.startsWith('EVENT')) advanceEvent(); else jump(); });
     addTouch('btnAttack', () => { if(gameState.startsWith('EVENT')) advanceEvent(); else attack(); });
 
-    document.getElementById('startBtn').addEventListener('click', initGame);
-    document.getElementById('restartBtn').addEventListener('click', () => location.reload());
-
+    // --- 動作邏輯 ---
     function jump() {
         if (player.isGrounded && gameState.startsWith('PLAYING')) {
             player.vy = player.jumpPower; player.isGrounded = false;
@@ -375,7 +379,7 @@
         } else if (gameState === 'BOSS_FIGHT') {
             boss.hp -= player.damage;
             boss.hitTimer = 8;
-            screenShake = 15; // 震動加強
+            screenShake = 15; 
             sfx.hit();
             createParticles(boss.x + Math.random()*boss.width, boss.y + boss.height, '#FFF', 15);
             addFloatingText(boss.x + Math.random()*200, boss.y + boss.height - 50 + Math.random()*50, `💥 -${player.damage}000`, '#FF0000');
@@ -392,41 +396,33 @@
         }
     }
 
+    // --- 事件觸發邏輯 ---
     let eventStep = 0;
     function triggerEvent(id) {
         keys.left = false; keys.right = false; player.vx = 0;
         eventStep = 0;
         
-        // 修正點：處理大聲公事件
         if (id === 'trigger_megaphone') {
+            // 大聲公事件修正：不再蓋掉 draw()，改用安全的全域變數控制顯示
             sfx.powerup();
-            // 在玩家頭上顯示大聲公道具
-            let pX = player.x + player.width/2;
-            let pY = player.y - 100;
-            // 使用 drawSprite 來顯示
-            const oldDraw = draw;
-            draw = function() {
-                oldDraw();
-                drawSprite('megaphone', pX - 50, pY, 100, 100, false, '📢');
-            }
-            
-            // 系統提示
+            showMegaphoneEffect = true; 
             showDialog('系統提示', '拾獲大聲公！\n皮友幫打菇+3 !!');
             
             player.damage = 3; 
             player.attackRange = 150;
             
-            // 停頓一下讓玩家看清楚
             gameState = 'EVENT_MEGAPHONE';
             setTimeout(() => {
+                showMegaphoneEffect = false;
                 hideDialog();
-                draw = oldDraw; // 恢復正常繪製
                 gameState = 'PLAYING';
             }, 2000);
+
         } else if (id === 'trigger_ruth') {
             gameState = 'EVENT_RUTH';
             showDialog('GEG祖媽 Ruth', '來來來！祖媽幫妳加持！\n準備好 Party Walk 了嗎？😎');
             sfx.powerup();
+
         } else if (id === 'trigger_error') {
             gameState = 'EVENT_ERROR';
             sfx.error();
@@ -434,6 +430,7 @@
             glitchOverlay.classList.add('glitching');
             screenShake = 20;
             setTimeout(() => { advanceEvent(); }, 1500);
+
         } else if (id === 'trigger_boss') {
             gameState = 'EVENT_BOSS';
             boss.active = true;
@@ -501,6 +498,7 @@
         setInterval(() => createParticles(Math.random()*canvas.width + cameraX, -20, ['#FF0','#F0F','#0FF','#0F0','#FFF'][Math.floor(Math.random()*5)], 3), 50);
     }
 
+    // --- 主迴圈邏輯 (物理與更新) ---
     function update() {
         if (gameState === 'START' || gameState === 'WIN') return;
         if (screenShake > 0) screenShake--;
@@ -527,17 +525,17 @@
                         m.hp = 0; m.active = false; sfx.break();
                         createParticles(m.x+30, m.y+30, '#FF5722', 20);
                         addFloatingText(m.x, m.y, "撞碎!", '#FFF');
-                    } else blocked = true;
+                    } else blocked = true; // 被一般狀態擋住
                 }
             });
         }
         
-        // 改善點 5: 絕對防穿透 Boss 牆壁邏輯
+        // 防穿透 Boss 牆壁邏輯
         if (gameState === 'BOSS_FIGHT' && boss && boss.active) {
             // 強制阻擋：玩家右側不能超過 Boss 左側
             if (nextX + player.width > boss.x + 50) {
                 blocked = true;
-                nextX = boss.x + 50 - player.width; // 貼在 Boss 臉前
+                nextX = boss.x + 50 - player.width; // 死死貼在 Boss 臉前
             }
         }
 
@@ -581,6 +579,7 @@
         floatingTexts.forEach((t, i) => { t.y += t.vy; t.life--; if(t.life <= 0) floatingTexts.splice(i, 1); });
     }
 
+    // --- 畫布繪製 ---
     function draw() {
         ctx.fillStyle = '#87CEEB'; ctx.fillRect(0, 0, canvas.width, canvas.height);
         ctx.save();
@@ -610,12 +609,11 @@
             }
         });
 
-        // 修正點：畫蘑菇敵人，如果沒有圖片就畫 Emoji 蘑菇
+        // 畫蘑菇敵人 (沒有圖片檔名則預設畫出 Emoji)
         mushrooms.forEach(m => {
             if (m.active) {
                 let ox = m.hitTimer > 0 ? (Math.random()*10-5) : 0;
                 let oy = m.hitTimer > 0 ? (Math.random()*10-5) : 0;
-                // 注意這裡我傳入 'mushroom_enemy'，對應到上面的空字串，所以它會 Fallback 畫出 '🍄' Emoji
                 drawSprite('mushroom_enemy', m.x + ox, m.y + oy, m.w, m.h, false, '🍄');
             }
         });
@@ -633,6 +631,11 @@
 
         let isFlip = keys.left && !keys.right;
         drawSprite(player.currentKey, player.x, player.y, player.width, player.height, isFlip, player.emoji);
+
+        // 如果觸發大聲公事件，顯示大聲公在頭上
+        if (showMegaphoneEffect) {
+            drawSprite('megaphone', player.x + player.width/2 - 50, player.y - 100, 100, 100, false, '📢');
+        }
 
         if (player.isAttacking) {
             ctx.save();
@@ -688,7 +691,6 @@
 
     // 初始化畫布
     draw();
-
 </script>
 </body>
 </html>
