@@ -123,11 +123,13 @@
 
 <script>
     // --- 圖片載入系統 (直接讀取同目錄) ---
+    // 修正點：分開定義「大聲公道具」和「一般蘑菇敵人」
     const imgUrls = {
         'tech_power': './tech_power.png',
         'sophie': './sophie.png',
         'pink_sophie': './pink_sophie.png',
-        'mushroom': './mushroom.png',
+        'megaphone': './mushroom.png',  // 這是您企劃書中的「拾獲大聲公皮友幫打菇+3」的圖片
+        'mushroom_enemy': '',           // 這是擋在路上的蘑菇敵人，目前沒有特定圖片，稍後用畫的或 Emoji
         'ruth': './ruth.png',
         'party_walk': './party_walk.png',
         '5_tickets': './5_tickets.png',
@@ -139,8 +141,10 @@
 
     const imgs = {};
     for (let key in imgUrls) {
-        imgs[key] = new Image();
-        imgs[key].src = imgUrls[key];
+        if (imgUrls[key] !== '') {
+            imgs[key] = new Image();
+            imgs[key].src = imgUrls[key];
+        }
     }
 
     const canvas = document.getElementById('gameCanvas');
@@ -227,18 +231,19 @@
             playTone(notes[step % notes.length], (type==='boss'?'sawtooth':'square'), speed/1000, 0.05);
             step++;
         }, speed);
-        isMusicPlaying = true;
+        playTone(150, 'sawtooth', 0.1, 0.1); playTone(100, 'square', 0.1, 0.1); 
     }
 
-    const sfx = {
-        jump: () => playTone(300, 'square', 0.2, 0.05),
-        hit: () => { playTone(150, 'sawtooth', 0.1, 0.1); playTone(100, 'square', 0.1, 0.1); },
-        break: () => { playTone(80, 'sawtooth', 0.3, 0.15); playTone(50, 'square', 0.4, 0.15); },
-        powerup: () => { [400, 500, 600, 800].forEach((f, i) => setTimeout(() => playTone(f, 'sine', 0.1, 0.1), i*100)); },
-        error: () => { playTone(100, 'sawtooth', 0.5, 0.2); playTone(120, 'square', 0.5, 0.2); },
-        win: () => { 
-            playBGM('stop'); // 停止背景音
-            // 完整版生日快樂歌
+    // 將 break 拆分出來，避免重複宣告
+    sfx.break = () => { 
+        playTone(80, 'sawtooth', 0.3, 0.15); playTone(50, 'square', 0.4, 0.15); 
+    }
+    
+    sfx.powerup = () => { [400, 500, 600, 800].forEach((f, i) => setTimeout(() => playTone(f, 'sine', 0.1, 0.1), i*100)); };
+    sfx.error = () => { playTone(100, 'sawtooth', 0.5, 0.2); playTone(120, 'square', 0.5, 0.2); };
+    sfx.win = () => { 
+        playBGM('stop'); // 停止背景音
+        // 完整版生日快樂歌
             const t0 = audioCtx.currentTime + 0.1;
             const tempo = 0.3; 
             const notes = [
@@ -281,6 +286,7 @@
         player.currentKey = 'pink_sophie';
         cameraX = 0; screenShake = 0;
 
+        // 修正點：重新配置關卡實體
         mushrooms = [
             { x: 800, y: groundY - 80, w: 80, h: 80, hp: 1, active: true, size: 80, hitTimer: 0 },
             { x: 1200, y: groundY - 80, w: 80, h: 80, hp: 1, active: true, size: 80, hitTimer: 0 },
@@ -288,15 +294,16 @@
             { x: 2000, y: groundY - 80, w: 80, h: 80, hp: 1, active: true, size: 80, hitTimer: 0 }
         ];
 
-        // 改善點 4: 放大 NPC 尺寸
         npcs = [
             { id: 'ruth', x: 2500, y: groundY - 150, w: 150, h: 150, emoji: '🧢👍', name: 'GEG祖媽 Ruth', active: true, key: 'ruth' },
-            { id: 'cylin', x: 4200, y: -200, targetY: groundY - 150, w: 150, h: 150, emoji: '🧚‍♀️✨', name: '仙子 CY Lin', active: false, key: 'double' } // 借用圖案
+            { id: 'cylin', x: 4200, y: -200, targetY: groundY - 150, w: 150, h: 150, emoji: '🧚‍♀️✨', name: '仙子 CY Lin', active: false, key: 'double' } 
         ];
 
         boss = { x: 5500, y: -500, targetY: groundY - 450, width: 450, height: 450, maxHp: 30, hp: 30, active: false, hitTimer: 0, state: 'waiting' };
 
+        // 修正點：加入拾獲大聲公的觸發器
         eventTriggers = [
+            { x: 1400, id: 'trigger_megaphone', done: false }, // 放在兩個蘑菇之間
             { x: 2400, id: 'trigger_ruth', done: false },
             { x: 4000, id: 'trigger_error', done: false },
             { x: 5200, id: 'trigger_boss', done: false }
@@ -390,7 +397,34 @@
     function triggerEvent(id) {
         keys.left = false; keys.right = false; player.vx = 0;
         eventStep = 0;
-        if (id === 'trigger_ruth') {
+        
+        // 修正點：處理大聲公事件
+        if (id === 'trigger_megaphone') {
+            sfx.powerup();
+            // 在玩家頭上顯示大聲公道具
+            let pX = player.x + player.width/2;
+            let pY = player.y - 100;
+            // 使用 drawSprite 來顯示
+            const oldDraw = draw;
+            draw = function() {
+                oldDraw();
+                drawSprite('megaphone', pX - 50, pY, 100, 100, false, '📢');
+            }
+            
+            // 系統提示
+            showDialog('系統提示', '拾獲大聲公！\n皮友幫打菇+3 !!');
+            
+            player.damage = 3; 
+            player.attackRange = 150;
+            
+            // 停頓一下讓玩家看清楚
+            gameState = 'EVENT_MEGAPHONE';
+            setTimeout(() => {
+                hideDialog();
+                draw = oldDraw; // 恢復正常繪製
+                gameState = 'PLAYING';
+            }, 2000);
+        } else if (id === 'trigger_ruth') {
             gameState = 'EVENT_RUTH';
             showDialog('GEG祖媽 Ruth', '來來來！祖媽幫妳加持！\n準備好 Party Walk 了嗎？😎');
             sfx.powerup();
@@ -577,11 +611,13 @@
             }
         });
 
+        // 修正點：畫蘑菇敵人，如果沒有圖片就畫 Emoji 蘑菇
         mushrooms.forEach(m => {
             if (m.active) {
                 let ox = m.hitTimer > 0 ? (Math.random()*10-5) : 0;
                 let oy = m.hitTimer > 0 ? (Math.random()*10-5) : 0;
-                drawSprite('mushroom', m.x + ox, m.y + oy, m.w, m.h, false, '🍄');
+                // 注意這裡我傳入 'mushroom_enemy'，對應到上面的空字串，所以它會 Fallback 畫出 '🍄' Emoji
+                drawSprite('mushroom_enemy', m.x + ox, m.y + oy, m.w, m.h, false, '🍄');
             }
         });
 
