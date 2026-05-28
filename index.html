@@ -68,6 +68,7 @@
             .btn { padding: 12px 30px; font-size: 1.5rem; }
         }
 
+        /* 絕對防禦機制：當螢幕為電腦版尺寸時，強制隱藏手機按鈕，不被 JS 覆蓋 */
         #mobileControls { position: absolute; bottom: max(20px, env(safe-area-inset-bottom)); left: 0; width: 100%; height: 100px; justify-content: space-between; padding: 0 20px; pointer-events: auto; z-index: 80; }
         @media (min-width: 769px) { #mobileControls { display: none !important; } }
         
@@ -130,7 +131,7 @@
         <button class="btn" id="startBtn">▶ 開始冒險</button>
     </div>
 
-    <!-- 結局畫面 (已修復滾動) -->
+    <!-- 結局畫面 -->
     <div id="endScreen" class="screen hidden">
         <h1 class="end-title">🎉 通關成功！ 🎉</h1>
         
@@ -186,10 +187,10 @@
 
     let groundY = 0;
 
-    // --- 核心更新：畫布邏輯縮放系統 ---
+    // --- 畫布邏輯縮放系統 ---
     function resize() { 
         if (window.innerWidth < 800) {
-            // 手機版：創造一個虛擬的 1000px 寬畫布，強制縮放使大物件(Boss)完整可見
+            // 手機版：強制縮放使大物件完整可見
             canvas.width = 1000;
             canvas.height = window.innerHeight * (1000 / window.innerWidth);
         } else {
@@ -200,14 +201,13 @@
         
         groundY = canvas.height - 150;
         
-        // 即時更新物件防錯 (必須確定 player 已經建立才能呼叫屬性)
+        // 即時更新物件防錯
         if (typeof player !== 'undefined' && player.isGrounded) player.y = groundY - player.height;
         if (typeof boss !== 'undefined' && boss.active) {
             boss.targetY = groundY - 450;
             if (boss.state === 'active') boss.y = boss.targetY;
         }
     }
-    // ⚠️ 注意：移除了這行原本在頂端的 window.addEventListener('resize', resize); resize(); 以避免變數未宣告的致命錯誤
 
     function drawSprite(key, x, y, w, h, flip = false, fallbackEmoji = '👩🏻‍💻') {
         const img = imgs[key];
@@ -305,7 +305,7 @@
 
     const keys = { left: false, right: false, jump: false, attack: false };
 
-    // --- 變數宣告完畢 ---
+    // --- 確保所有變數皆在 resize 前宣告完畢 ---
     const player = {
         x: 100, y: 0, width: 120, height: 120, vx: 0, vy: 0, speed: 7, jumpPower: -18, gravity: 0.9,
         isGrounded: true, isAttacking: false, attackTimer: 0,
@@ -314,7 +314,7 @@
 
     let mushrooms = [], particles = [], floatingTexts = [], npcs = [], eventTriggers = [], boss = { active: false };
 
-    // ⚠️ 致命 Bug 修復：將 resize 綁定與執行移到所有變數宣告完畢之後，確保程式不會因為讀不到 player 而死當。
+    // 啟動畫布初始設定
     window.addEventListener('resize', resize);
     resize(); 
 
@@ -358,6 +358,9 @@
         endScreen.classList.add('hidden');
         bossHealthContainer.classList.add('hidden');
         dialogBox.style.display = 'none';
+        
+        // 確保手機版按鈕正確顯示 (電腦版由CSS的!important機制保護，絕對不會被這行影響)
+        mobileControls.classList.remove('hidden');
         
         requestAnimationFrame(gameLoop);
     }
@@ -428,7 +431,7 @@
                 boss.active = false;
                 bossHealthContainer.classList.add('hidden');
                 
-                // 隱藏手機操作版以展示完整畫面
+                // 通關後隱藏虛擬按鍵，還給玩家乾淨的結局畫面
                 if(document.getElementById('mobileControls')) document.getElementById('mobileControls').style.display = 'none';
                 
                 createParticles(boss.x + boss.width/2, boss.y + boss.height/2, '#FFD700', 100);
