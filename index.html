@@ -5,14 +5,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Sophie的皮克敏王國大冒險</title>
     <style>
+        /* 基礎重置 */
         * { box-sizing: border-box; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
-        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background-color: #87CEEB; overflow: hidden; touch-action: none; overscroll-behavior: none; font-family: '微軟正黑體', 'Arial', sans-serif; }
         
-        #gameCanvas { display: block; width: 100%; height: 100%; object-fit: contain; image-rendering: pixelated; image-rendering: -moz-crisp-edges; }
-        #uiLayer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; display: flex; flex-direction: column; justify-content: space-between; padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); z-index: 50;}
+        /* 移除 body 的 touch-action: none 以利特定視窗(結局)可以滑動 */
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background-color: #87CEEB; overflow: hidden; overscroll-behavior: none; font-family: '微軟正黑體', 'Arial', sans-serif; }
+        
+        /* 將禁止滑動限制在遊戲畫布與 UI 操控層 */
+        #gameCanvas { display: block; width: 100%; height: 100%; object-fit: contain; image-rendering: pixelated; image-rendering: -moz-crisp-edges; touch-action: none; }
+        #uiLayer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; display: flex; flex-direction: column; justify-content: space-between; padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); z-index: 50; touch-action: none; }
 
-        /* 首頁動態背景特效 */
-        .screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; color: white; z-index: 100; pointer-events: auto; text-align: center; padding: 20px; backdrop-filter: blur(5px); }
+        /* 畫面層 (支援超過螢幕高度時的滾動) */
+        .screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; color: white; z-index: 100; pointer-events: auto; text-align: center; padding: 20px; backdrop-filter: blur(5px); overflow-y: auto; -webkit-overflow-scrolling: touch; touch-action: auto; }
+        
         #startScreen { background: radial-gradient(circle, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.95) 100%); }
         #endScreen { background: rgba(0, 0, 0, 0.85); }
         .hidden { display: none !important; }
@@ -27,6 +32,15 @@
         .btn { background: linear-gradient(135deg, #4CAF50, #2E7D32); color: white; border: 4px solid #fff; padding: 15px 50px; font-size: 1.8rem; border-radius: 30px; cursor: pointer; font-weight: bold; box-shadow: 0 8px 20px rgba(0,0,0,0.6); transition: transform 0.1s, filter 0.2s; z-index: 10;}
         .btn:active { transform: scale(0.95); filter: brightness(0.8); }
 
+        /* 結局畫面重構 (支援手機版自適應) */
+        .end-title { font-size: 3.5rem; margin-bottom: 0px; text-shadow: 3px 3px 0 #E91E63; }
+        .cake-container { position: relative; margin: 30px 0; animation: floatUp 2s infinite; }
+        .cake-emoji { font-size: 8rem; filter: drop-shadow(0 15px 15px rgba(0,0,0,0.6)); }
+        .cake-tag { position: absolute; top: -30px; left: 50%; transform: translateX(-50%); font-size: 1.6rem; white-space: nowrap; font-weight: 900; color: #FFEB3B; text-shadow: 2px 2px 0 #000, -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 4px 4px 8px rgba(0,0,0,0.8); background: rgba(233, 30, 99, 0.8); padding: 5px 20px; border-radius: 20px; border: 3px solid #FFF; }
+        .message-box { color: #FFF; line-height: 1.6; font-size: 2.2rem; background: rgba(0,0,0,0.7); padding: 25px 40px; border-radius: 25px; border: 5px solid #FFD700; box-shadow: 0 0 30px #FFD700, inset 0 0 20px #FFD700; }
+        .happy-birthday { color: #FFEB3B; font-size: 3.5rem; font-weight: 900; text-shadow: 4px 4px 0 #E91E63; }
+        .signature { font-size: 1.3rem; color: #FFF; text-align: right; margin-top: 15px; border-top: 2px dashed #FFF; padding-top: 10px; }
+
         #dialogBox { position: absolute; bottom: 120px; left: 50%; transform: translateX(-50%); width: 90%; max-width: 600px; background: rgba(255, 255, 255, 0.95); border: 5px solid #333; border-radius: 20px; padding: 20px; color: #333; font-size: 1.5rem; font-weight: bold; text-align: left; box-shadow: 0 10px 25px rgba(0,0,0,0.5); z-index: 60; display: none; }
         #dialogName { color: #E91E63; margin-bottom: 10px; font-size: 1.2rem; }
 
@@ -35,10 +49,27 @@
         @keyframes glitchAnim { 0% { transform: translate(5px, 5px); } 20% { transform: translate(-5px, -5px); filter: invert(1); } 40% { transform: translate(-5px, 5px); } 60% { transform: translate(5px, -5px); filter: hue-rotate(90deg); } 80% { transform: translate(5px, 5px); } 100% { transform: translate(0, 0); } }
 
         .mobile-inst { display: none; }
-        @media (max-width: 767px) { .desktop-inst { display: none; } .mobile-inst { display: block; } }
+        
+        /* --- 手機版自適應與介面優化 --- */
+        @media (max-width: 768px), (max-height: 850px) {
+            .desktop-inst { display: none; } 
+            .mobile-inst { display: block; }
+            #mobileControls { display: flex; }
+            
+            /* 讓結局畫面在手機上可以滾動並調整字體大小 */
+            .screen { justify-content: flex-start; padding-top: 40px; padding-bottom: 60px; }
+            .end-title { font-size: 2.2rem; }
+            .cake-container { margin: 20px 0; }
+            .cake-emoji { font-size: 6rem; }
+            .cake-tag { font-size: 1.2rem; top: -20px; padding: 4px 15px;}
+            .message-box { font-size: 1.3rem; padding: 15px 20px; }
+            .happy-birthday { font-size: 2.2rem; }
+            .signature { font-size: 1.1rem; margin-top: 10px; padding-top: 8px;}
+            .btn { padding: 12px 30px; font-size: 1.5rem; }
+        }
 
-        #mobileControls { position: absolute; bottom: max(20px, env(safe-area-inset-bottom)); left: 0; width: 100%; height: 100px; display: flex; justify-content: space-between; padding: 0 20px; pointer-events: auto; z-index: 80; }
-        @media (min-width: 768px) { #mobileControls { display: none; } }
+        #mobileControls { position: absolute; bottom: max(20px, env(safe-area-inset-bottom)); left: 0; width: 100%; height: 100px; justify-content: space-between; padding: 0 20px; pointer-events: auto; z-index: 80; }
+        @media (min-width: 769px) { #mobileControls { display: none !important; } }
         
         .control-group { display: flex; gap: 15px; }
         .action-btn { width: 75px; height: 75px; background: rgba(255, 255, 255, 0.7); border: 3px solid rgba(0, 0, 0, 0.2); border-radius: 50%; font-size: 28px; display: flex; align-items: center; justify-content: center; color: #333; font-weight: bold; box-shadow: 0 5px 0 rgba(0,0,0,0.2); -webkit-tap-highlight-color: transparent; }
@@ -50,7 +81,6 @@
         #bossHealthBar { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(90deg, #ff0000, #ff5722); transition: width 0.1s; z-index: 1;}
         #bossName { position: relative; z-index: 2; width: 100%; text-align: center; color: white; font-weight: 900; top: 2px; font-size: 24px; letter-spacing: 2px; text-shadow: 2px 2px 4px #000, -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000;}
         
-        /* 首頁背景 Canvas */
         #bgCanvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; pointer-events: none;}
     </style>
 </head>
@@ -84,11 +114,10 @@
 
     <!-- 開始畫面 -->
     <div id="startScreen" class="screen">
-        <canvas id="bgCanvas"></canvas> <!-- 動態背景粒子 -->
+        <canvas id="bgCanvas"></canvas>
         <h1 style="position: relative; z-index: 10;">Sophie的皮克敏<br>王國大冒險</h1>
         <p style="color: #FFF; position: relative; z-index: 10;">今天是妳的生日！🎂<br>準備好專屬技能開路了嗎？</p>
         
-        <!-- 清楚的操作說明 -->
         <div class="instructions desktop-inst" style="position: relative; z-index: 10;">
             ⌨️ 遊戲操作：<br>
             [方向鍵] 移動 / [空白鍵] 跳躍 / [Z鍵 或 Enter] 攻擊
@@ -101,34 +130,31 @@
         <button class="btn" id="startBtn">▶ 開始冒險</button>
     </div>
 
-    <!-- 結局畫面 -->
+    <!-- 結局畫面 (已修復滾動) -->
     <div id="endScreen" class="screen hidden">
-        <h1 style="font-size: 3.5rem; margin-bottom: 0px; text-shadow: 3px 3px 0 #E91E63;">🎉 通關成功！ 🎉</h1>
+        <h1 class="end-title">🎉 通關成功！ 🎉</h1>
         
-        <div style="position: relative; margin: 30px 0; animation: floatUp 2s infinite;">
-            <div style="font-size: 8rem; filter: drop-shadow(0 15px 15px rgba(0,0,0,0.6));">🎂</div>
-            <div style="position: absolute; top: -30px; left: 50%; transform: translateX(-50%); font-size: 1.6rem; white-space: nowrap; font-weight: 900; color: #FFEB3B; text-shadow: 2px 2px 0 #000, -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 4px 4px 8px rgba(0,0,0,0.8); background: rgba(233, 30, 99, 0.8); padding: 5px 20px; border-radius: 20px; border: 3px solid #FFF;">
-                獻上特製皮克敏蛋糕！
-            </div>
+        <div class="cake-container">
+            <div class="cake-emoji">🎂</div>
+            <div class="cake-tag">獻上特製皮克敏蛋糕！</div>
         </div>
 
-        <h2 style="color: #FFF; line-height: 1.6; font-size: 2.2rem; background: rgba(0,0,0,0.7); padding: 25px 40px; border-radius: 25px; border: 5px solid #FFD700; box-shadow: 0 0 30px #FFD700, inset 0 0 20px #FFD700;">
+        <h2 class="message-box">
             ✨ 祝賀雙子座 Gemini 的 Sophie ✨<br>
-            <span style="color: #FFEB3B; font-size: 3.5rem; font-weight: 900; text-shadow: 4px 4px 0 #E91E63;">生日快樂！</span><br>
-            <div style="font-size: 1.3rem; color: #FFF; text-align: right; margin-top: 15px; border-top: 2px dashed #FFF; padding-top: 10px;">Ching Ying Lin 敬賀 🧚‍♀️</div>
+            <span class="happy-birthday">生日快樂！</span><br>
+            <div class="signature">Ching Ying Lin 敬賀 🧚‍♀️</div>
         </h2>
         
         <button class="btn" id="restartBtn" style="margin-top: 25px; background: #E91E63; position: relative; z-index: 10;">再來一次</button>
     </div>
 
 <script>
-    // --- 圖片載入系統 (直接讀取同目錄) ---
     const imgUrls = {
         'tech_power': './tech_power.png',
         'sophie': './sophie.png',
         'pink_sophie': './pink_sophie.png',
-        'megaphone': './mushroom.png',  // 大聲公皮友幫打菇圖檔
-        'mushroom_enemy': '',           // 蘑菇敵人 (留空以使用 🍄 Emoji 替代)
+        'megaphone': './mushroom.png',  
+        'mushroom_enemy': '',           
         'ruth': './ruth.png',
         'party_walk': './party_walk.png',
         '5_tickets': './5_tickets.png',
@@ -158,7 +184,29 @@
     const dialogText = document.getElementById('dialogText');
     const glitchOverlay = document.getElementById('glitchOverlay');
 
-    function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+    let groundY = 0;
+
+    // --- 核心更新：畫布邏輯縮放系統 ---
+    function resize() { 
+        if (window.innerWidth < 800) {
+            // 手機版：創造一個虛擬的 1000px 寬畫布，強制縮放使大物件(Boss)完整可見
+            canvas.width = 1000;
+            canvas.height = window.innerHeight * (1000 / window.innerWidth);
+        } else {
+            // 電腦版：維持 1:1 像素映射不變
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        
+        groundY = canvas.height - 150;
+        
+        // 即時更新物件防錯
+        if (typeof player !== 'undefined' && player.isGrounded) player.y = groundY - player.height;
+        if (typeof boss !== 'undefined' && boss.active) {
+            boss.targetY = groundY - 450;
+            if (boss.state === 'active') boss.y = boss.targetY;
+        }
+    }
     window.addEventListener('resize', resize); resize();
 
     function drawSprite(key, x, y, w, h, flip = false, fallbackEmoji = '👩🏻‍💻') {
@@ -167,7 +215,7 @@
         if (flip) {
             ctx.translate(x + w, y);
             ctx.scale(-1, 1);
-            x = 0; // 反轉後 x 歸零
+            x = 0; 
         }
         
         if (img && img.complete && img.naturalWidth > 0) {
@@ -180,7 +228,7 @@
         ctx.restore();
     }
 
-    // --- 音效與 BGM 系統 (完整修復版本) ---
+    // --- 音效與 BGM 系統 ---
     const AudioContext = window.AudioContext || window.webkitAudioContext;
     let audioCtx;
     let currentBGM = null;
@@ -203,7 +251,6 @@
         osc.stop((startTime || audioCtx.currentTime) + duration);
     }
     
-    // 簡易 8-bit BGM 產生器
     function playBGM(type) {
         if(!audioCtx) return;
         if(currentBGM) clearInterval(currentBGM);
@@ -216,10 +263,10 @@
             speed = 300;
         } else if (type === 'party') {
             notes = [523, 523, 659, 784, 523, 523, 659, 784, 880, 784];
-            speed = 150; // Party 音樂節奏加快
+            speed = 150; 
         } else if (type === 'boss') {
             notes = [130, 146, 130, 146, 164, 146, 130, 100];
-            speed = 200; // 低沉緊張
+            speed = 200; 
         } else if (type === 'stop') {
             return;
         }
@@ -231,7 +278,6 @@
         }, speed);
     }
 
-    // 建立完整的音效物件 (這是按鈕能否順利運作的關鍵)
     const sfx = {
         jump: () => playTone(300, 'square', 0.2, 0.05),
         hit: () => { playTone(150, 'sawtooth', 0.1, 0.1); playTone(100, 'square', 0.1, 0.1); },
@@ -239,8 +285,7 @@
         powerup: () => { [400, 500, 600, 800].forEach((f, i) => setTimeout(() => playTone(f, 'sine', 0.1, 0.1), i*100)); },
         error: () => { playTone(100, 'sawtooth', 0.5, 0.2); playTone(120, 'square', 0.5, 0.2); },
         win: () => { 
-            playBGM('stop'); // 停止背景音
-            // 完整版生日快樂歌
+            playBGM('stop');
             const t0 = audioCtx.currentTime + 0.1;
             const tempo = 0.3; 
             const notes = [
@@ -253,16 +298,13 @@
         }
     };
 
-    // --- 遊戲核心變數 ---
     let gameState = 'START'; 
     let cameraX = 0;
-    let groundY = canvas.height - 150;
     let screenShake = 0;
-    let showMegaphoneEffect = false; // 用於安全顯示大聲公特效
+    let showMegaphoneEffect = false; 
 
     const keys = { left: false, right: false, jump: false, attack: false };
 
-    // 放大的主角尺寸
     const player = {
         x: 100, y: 0, width: 120, height: 120, vx: 0, vy: 0, speed: 7, jumpPower: -18, gravity: 0.9,
         isGrounded: true, isAttacking: false, attackTimer: 0,
@@ -271,12 +313,10 @@
 
     let mushrooms = [], particles = [], floatingTexts = [], npcs = [], eventTriggers = [], boss = { active: false };
 
-    // --- 初始化與開始遊戲 ---
     function initGame() {
-        initAudio(); // 授權啟動音效 (解決無聲問題的關鍵)
-        playBGM('normal'); // 開始播放一般 BGM
+        initAudio(); 
+        playBGM('normal'); 
 
-        groundY = canvas.height - 150;
         player.x = 200; player.y = groundY - player.height;
         player.vx = 0; player.vy = 0;
         player.hasPartyWalk = false; player.hasPikmorphie = false;
@@ -286,15 +326,13 @@
         cameraX = 0; screenShake = 0;
         showMegaphoneEffect = false;
 
-        // 配置關卡實體
         mushrooms = [
             { x: 800, y: groundY - 80, w: 80, h: 80, hp: 1, active: true, size: 80, hitTimer: 0 },
             { x: 1200, y: groundY - 80, w: 80, h: 80, hp: 1, active: true, size: 80, hitTimer: 0 },
-            { x: 1700, y: groundY - 180, w: 180, h: 180, hp: 3, active: true, size: 180, hitTimer: 0 }, // 巨大蘑菇
+            { x: 1700, y: groundY - 180, w: 180, h: 180, hp: 3, active: true, size: 180, hitTimer: 0 },
             { x: 2000, y: groundY - 80, w: 80, h: 80, hp: 1, active: true, size: 80, hitTimer: 0 }
         ];
 
-        // 放大 Ruth 與仙子尺寸
         npcs = [
             { id: 'ruth', x: 2500, y: groundY - 150, w: 150, h: 150, emoji: '🧢👍', name: 'GEG祖媽 Ruth', active: true, key: 'ruth' },
             { id: 'cylin', x: 4200, y: -200, targetY: groundY - 150, w: 150, h: 150, emoji: '🧚‍♀️✨', name: '仙子 CY Lin', active: false, key: 'double' } 
@@ -302,9 +340,8 @@
 
         boss = { x: 5500, y: -500, targetY: groundY - 450, width: 450, height: 450, maxHp: 30, hp: 30, active: false, hitTimer: 0, state: 'waiting' };
 
-        // 觸發器位置
         eventTriggers = [
-            { x: 1400, id: 'trigger_megaphone', done: false }, // 放在兩個蘑菇之間
+            { x: 1400, id: 'trigger_megaphone', done: false },
             { x: 2400, id: 'trigger_ruth', done: false },
             { x: 4000, id: 'trigger_error', done: false },
             { x: 5200, id: 'trigger_boss', done: false }
@@ -314,18 +351,15 @@
         gameState = 'PLAYING';
         startScreen.classList.add('hidden');
         endScreen.classList.add('hidden');
-        mobileControls.classList.remove('hidden');
         bossHealthContainer.classList.add('hidden');
         dialogBox.style.display = 'none';
         
         requestAnimationFrame(gameLoop);
     }
 
-    // 綁定按鈕事件 (確保開始遊戲按鈕順利執行)
     document.getElementById('startBtn').addEventListener('click', initGame);
     document.getElementById('restartBtn').addEventListener('click', () => location.reload());
 
-    // --- 輸入處理 ---
     window.addEventListener('keydown', (e) => {
         if(e.code === 'ArrowLeft' || e.code === 'KeyA') keys.left = true;
         if(e.code === 'ArrowRight' || e.code === 'KeyD') keys.right = true;
@@ -348,7 +382,6 @@
     addTouch('btnJump', () => { if(gameState.startsWith('EVENT')) advanceEvent(); else jump(); });
     addTouch('btnAttack', () => { if(gameState.startsWith('EVENT')) advanceEvent(); else attack(); });
 
-    // --- 動作邏輯 ---
     function jump() {
         if (player.isGrounded && gameState.startsWith('PLAYING')) {
             player.vy = player.jumpPower; player.isGrounded = false;
@@ -389,21 +422,22 @@
                 gameState = 'WIN_SEQ';
                 boss.active = false;
                 bossHealthContainer.classList.add('hidden');
-                mobileControls.classList.add('hidden');
+                
+                // 隱藏手機操作版以展示完整畫面
+                if(document.getElementById('mobileControls')) document.getElementById('mobileControls').style.display = 'none';
+                
                 createParticles(boss.x + boss.width/2, boss.y + boss.height/2, '#FFD700', 100);
                 setTimeout(winGame, 1500);
             }
         }
     }
 
-    // --- 事件觸發邏輯 ---
     let eventStep = 0;
     function triggerEvent(id) {
         keys.left = false; keys.right = false; player.vx = 0;
         eventStep = 0;
         
         if (id === 'trigger_megaphone') {
-            // 大聲公事件修正：不再蓋掉 draw()，改用安全的全域變數控制顯示
             sfx.powerup();
             showMegaphoneEffect = true; 
             showDialog('系統提示', '拾獲大聲公！\n皮友幫打菇+3 !!');
@@ -426,7 +460,7 @@
         } else if (id === 'trigger_error') {
             gameState = 'EVENT_ERROR';
             sfx.error();
-            playBGM('stop'); // 停止音樂製造突兀感
+            playBGM('stop'); 
             glitchOverlay.classList.add('glitching');
             screenShake = 20;
             setTimeout(() => { advanceEvent(); }, 1500);
@@ -435,9 +469,8 @@
             gameState = 'EVENT_BOSS';
             boss.active = true;
             boss.state = 'dropping';
-            playBGM('boss'); // 切換戰鬥音樂
+            playBGM('boss'); 
             sfx.error();
-            // 翻白眼彩蛋
             let oldKey = player.currentKey;
             player.currentKey = 'roll_eyes';
             setTimeout(() => { player.currentKey = oldKey; }, 2000);
@@ -449,10 +482,10 @@
             if (eventStep === 0) {
                 hideDialog();
                 player.hasPartyWalk = true; player.speed = 10; player.damage = 3;
-                player.currentKey = 'party_walk'; // 換造型
+                player.currentKey = 'party_walk'; 
                 addFloatingText(player.x, player.y - 50, "⭐ Party Walk 模式啟動!", '#FFEB3B');
                 sfx.powerup();
-                playBGM('party'); // 切換 Party BGM
+                playBGM('party'); 
                 gameState = 'PLAYING_BUFF';
             }
         } else if (gameState === 'EVENT_ERROR') {
@@ -471,7 +504,7 @@
                 hideDialog();
                 player.currentKey = 'dog'; 
                 player.hasPikmorphie = true;
-                player.width = 180; player.height = 180; // 神獸更大
+                player.width = 180; player.height = 180; 
                 player.y -= 60;
                 player.speed = 12; player.jumpPower = -22; player.damage = 5; player.attackRange = 150;
                 addFloatingText(player.x, player.y - 50, "⚔️ 戰力 +5000 !!", '#FF0000');
@@ -493,12 +526,11 @@
     
     function winGame() {
         gameState = 'WIN';
-        sfx.win(); // 播放完整的生日快樂歌
+        sfx.win(); 
         endScreen.classList.remove('hidden');
         setInterval(() => createParticles(Math.random()*canvas.width + cameraX, -20, ['#FF0','#F0F','#0FF','#0F0','#FFF'][Math.floor(Math.random()*5)], 3), 50);
     }
 
-    // --- 主迴圈邏輯 (物理與更新) ---
     function update() {
         if (gameState === 'START' || gameState === 'WIN') return;
         if (screenShake > 0) screenShake--;
@@ -508,7 +540,6 @@
             else if (keys.left) player.vx = -player.speed;
             else player.vx = 0;
             
-            // Party Walk 彩虹拖影
             if (player.hasPartyWalk && Math.abs(player.vx) > 0 && Math.random() > 0.5) {
                 createParticles(player.x + player.width/2, player.y + player.height - 20, ['#FF0000', '#FF7F00', '#FFFF00', '#00FF00', '#0000FF'][Math.floor(Math.random()*5)], 1);
             }
@@ -525,25 +556,22 @@
                         m.hp = 0; m.active = false; sfx.break();
                         createParticles(m.x+30, m.y+30, '#FF5722', 20);
                         addFloatingText(m.x, m.y, "撞碎!", '#FFF');
-                    } else blocked = true; // 被一般狀態擋住
+                    } else blocked = true; 
                 }
             });
         }
         
-        // 防穿透 Boss 牆壁邏輯
         if (gameState === 'BOSS_FIGHT' && boss && boss.active) {
-            // 強制阻擋：玩家右側不能超過 Boss 左側
             if (nextX + player.width > boss.x + 50) {
                 blocked = true;
-                nextX = boss.x + 50 - player.width; // 死死貼在 Boss 臉前
+                nextX = boss.x + 50 - player.width; 
             }
         }
 
         if (!blocked) player.x = nextX;
         
-        // 攝影機跟隨
         if (player.x > cameraX + canvas.width * 0.4) cameraX = player.x - canvas.width * 0.4;
-        if (player.x < cameraX) player.x = cameraX; // 不准後退
+        if (player.x < cameraX) player.x = cameraX; 
 
         player.vy += player.gravity; player.y += player.vy;
         if (player.y + player.height > groundY) { player.y = groundY - player.height; player.vy = 0; player.isGrounded = true; }
@@ -563,10 +591,10 @@
         }
         
         if (gameState === 'EVENT_BOSS' && boss.state === 'dropping') {
-            boss.y += 25; // 掉落更快
+            boss.y += 25; 
             if (boss.y >= boss.targetY) {
                 boss.y = boss.targetY;
-                screenShake = 40; sfx.break(); // 巨大震動
+                screenShake = 40; sfx.break(); 
                 createParticles(boss.x + boss.width/2, boss.y + boss.height, '#654321', 80); 
                 boss.state = 'active';
                 gameState = 'BOSS_FIGHT';
@@ -579,7 +607,6 @@
         floatingTexts.forEach((t, i) => { t.y += t.vy; t.life--; if(t.life <= 0) floatingTexts.splice(i, 1); });
     }
 
-    // --- 畫布繪製 ---
     function draw() {
         ctx.fillStyle = '#87CEEB'; ctx.fillRect(0, 0, canvas.width, canvas.height);
         ctx.save();
@@ -593,8 +620,10 @@
         ctx.fillStyle = '#8B4513'; ctx.fillRect(cameraX-100, groundY, canvas.width + 200, canvas.height - groundY);
         ctx.fillStyle = '#4CAF50'; ctx.fillRect(cameraX-100, groundY, canvas.width + 200, 20);
         
+        // 修正雲朵高度適應縮放
         ctx.font = '40px Arial';
-        ctx.fillText('☁️', cameraX*0.9 + 100, 150); ctx.fillText('☁️', cameraX*0.9 + 500, 100);
+        ctx.fillText('☁️', cameraX*0.9 + 100, canvas.height * 0.2); 
+        ctx.fillText('☁️', cameraX*0.9 + 500, canvas.height * 0.15);
         
         if (player.hasPikmorphie) {
             for(let i=0; i<10; i++) { ctx.fillText('🌸', cameraX + i*200, groundY - 10); ctx.fillText('🌻', cameraX + i*200 + 100, groundY - 10); }
@@ -609,7 +638,6 @@
             }
         });
 
-        // 畫蘑菇敵人 (沒有圖片檔名則預設畫出 Emoji)
         mushrooms.forEach(m => {
             if (m.active) {
                 let ox = m.hitTimer > 0 ? (Math.random()*10-5) : 0;
@@ -632,7 +660,6 @@
         let isFlip = keys.left && !keys.right;
         drawSprite(player.currentKey, player.x, player.y, player.width, player.height, isFlip, player.emoji);
 
-        // 如果觸發大聲公事件，顯示大聲公在頭上
         if (showMegaphoneEffect) {
             drawSprite('megaphone', player.x + player.width/2 - 50, player.y - 100, 100, 100, false, '📢');
         }
@@ -659,12 +686,13 @@
         ctx.restore();
     }
 
-    // --- 首頁動態花瓣背景 ---
     const bgCanvas = document.getElementById('bgCanvas');
     const bgCtx = bgCanvas.getContext('2d');
     let bgParticles = [];
     function initBgParticles() {
+        if (!bgCanvas) return;
         bgCanvas.width = window.innerWidth; bgCanvas.height = window.innerHeight;
+        bgParticles = [];
         for(let i=0; i<50; i++) {
             bgParticles.push({
                 x: Math.random() * bgCanvas.width, y: Math.random() * bgCanvas.height,
@@ -673,8 +701,12 @@
             });
         }
     }
+    
+    // 背景尺寸跟隨主視窗更新
+    window.addEventListener('resize', initBgParticles);
+
     function drawBgParticles() {
-        if (gameState !== 'START') return; // 只在首頁畫
+        if (gameState !== 'START') return; 
         bgCtx.clearRect(0, 0, bgCanvas.width, bgCanvas.height);
         bgParticles.forEach(p => {
             bgCtx.fillStyle = p.color; bgCtx.globalAlpha = 0.6;
@@ -688,8 +720,6 @@
     drawBgParticles();
 
     function gameLoop() { update(); draw(); if (gameState !== 'START') requestAnimationFrame(gameLoop); }
-
-    // 初始化畫布
     draw();
 </script>
 </body>
