@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Sophie的皮克敏王國大冒險</title>
     <style>
+        /* 基礎重置與防呆 */
         * { box-sizing: border-box; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; background-color: #000; overflow: hidden; touch-action: none; overscroll-behavior: none; font-family: 'Courier New', Courier, '微軟正黑體', monospace; }
         
@@ -16,6 +17,7 @@
             background-color: #87CEEB; /* 天空藍背景 */
         }
 
+        /* UI 層設定 */
         #uiLayer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; display: flex; flex-direction: column; justify-content: space-between; padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); z-index: 50;}
 
         /* 畫面遮罩 */
@@ -34,6 +36,7 @@
         #dialogHint { font-size: 1rem; color: #aaa; text-align: right; margin-top: 10px; animation: blink 1s infinite;}
         @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.2; } }
 
+        /* 系統錯誤雜訊特效 */
         #glitchOverlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: repeating-linear-gradient(0deg, rgba(0,0,0,0.15), rgba(0,0,0,0.15) 1px, transparent 1px, transparent 2px); pointer-events: none; z-index: 90; opacity: 0; }
         .glitching { animation: glitchAnim 0.2s infinite; opacity: 1 !important; background-color: rgba(255,0,0,0.2) !important;}
         @keyframes glitchAnim { 0% { transform: translate(5px, 5px); } 20% { transform: translate(-5px, -5px); filter: invert(1); } 40% { transform: translate(-5px, 5px); } 60% { transform: translate(5px, -5px); filter: hue-rotate(90deg); } 80% { transform: translate(5px, 5px); } 100% { transform: translate(0, 0); } }
@@ -43,6 +46,7 @@
         #bossHealthBar { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #ff0000; z-index: 1; transition: width 0.1s;}
         #bossName { position: relative; z-index: 2; width: 100%; text-align: center; color: white; font-weight: 900; font-size: 24px; text-shadow: 2px 2px 0 #000;}
 
+        /* 手機按鈕 */
         #mobileControls { position: absolute; bottom: 20px; left: 0; width: 100%; height: 100px; display: flex; justify-content: space-between; padding: 0 20px; pointer-events: auto; z-index: 80; }
         @media (min-width: 768px) { #mobileControls { display: none; } }
         .control-group { display: flex; gap: 15px; }
@@ -131,6 +135,7 @@
 
     const loadedImages = {};
     
+    // 預先載入所有圖片
     for (let key in imageAssets) {
         let img = new Image();
         img.src = imageAssets[key].src;
@@ -144,6 +149,7 @@
         if (img && img.complete && img.naturalWidth > 0) {
             ctx.drawImage(img, x, y, w, h);
         } else {
+            // 如果圖片還沒讀好或不存在，使用高質感 Emoji 佔位，絕不讓遊戲崩潰
             ctx.fillStyle = 'rgba(255,255,255,0.8)';
             ctx.fillRect(x, y, w, h);
             ctx.lineWidth = 4; ctx.strokeStyle = '#333'; ctx.strokeRect(x, y, w, h);
@@ -154,6 +160,7 @@
         }
     }
 
+    // --- 音效系統 (合成 8-bit) ---
     const AudioContext = window.AudioContext || window.webkitAudioContext;
     const audioCtx = new AudioContext();
 
@@ -179,7 +186,8 @@
         win: () => { [523, 659, 783, 1046].forEach((f, i) => setTimeout(() => playTone(f, 'square', 0.2, 0.1), i*150)); }
     };
 
-    let gameState = 'START'; 
+    // --- 遊戲狀態與變數 ---
+    let gameState = 'START'; // START, INTRO_1, INTRO_2, PLAYING, BOSS_FIGHT, WIN
     let introTimer = 0;
     let cameraX = 0;
     let groundY = 0;
@@ -197,6 +205,7 @@
     let popups = [];
     let boss = { hp: 10, maxHp: 10, active: false };
 
+    // --- 關卡設計 (Trigger 點) ---
     function initGame() {
         groundY = canvas.height - 150;
         player.x = 200; player.y = groundY - player.height;
@@ -209,7 +218,7 @@
             { type: 'mushroom_enemy', x: 1200, y: groundY - 80, w: 80, h: 80, hp: 1, active: true },
             { type: 'trigger_megaphone', x: 1600, done: false },
             { type: 'mushroom_enemy', x: 2000, y: groundY - 120, w: 120, h: 120, hp: 2, active: true },
-            { type: 'trigger_ruth', x: 2600, w: 100, h: 100, y: groundY - 100, active: true }, 
+            { type: 'trigger_ruth', x: 2600, w: 100, h: 100, y: groundY - 100, active: true }, // Ruth NPC
             { type: 'trigger_error', x: 3800, done: false },
             { type: 'trigger_dog', x: 4200, done: false },
             { type: 'trigger_boss', x: 5000, done: false }
@@ -221,11 +230,13 @@
         mobileControls.classList.remove('hidden');
         if(audioCtx.state === 'suspended') audioCtx.resume();
         
+        // 進入開場動畫
         gameState = 'INTRO_1';
-        introTimer = 120; 
+        introTimer = 120; // 2秒鐘
         requestAnimationFrame(gameLoop);
     }
 
+    // --- 輸入控制 ---
     function handleInputDown(act) {
         if (gameState === 'INTRO_2' && act === 'jump') advanceIntro();
         if (gameState === 'DIALOG' && act === 'jump') closeDialog();
@@ -279,7 +290,7 @@
             });
         } 
         else if (gameState === 'BOSS_FIGHT') {
-            if (boss.active && player.sprite === 'dog') { 
+            if (boss.active && player.sprite === 'dog') { // 騎著歐慶才能打
                 boss.hp -= 1;
                 sfx.hit();
                 screenShake = 15;
@@ -296,6 +307,7 @@
         }
     }
 
+    // --- 劇情與過場邏輯 ---
     function advanceIntro() {
         gameState = 'PLAYING';
         dialogBox.style.display = 'none';
@@ -312,7 +324,7 @@
             sfx.powerup();
             player.sprite = 'party_walk'; 
             showPopup('party_walk', canvas.width/2 - 100, canvas.height/4, 200, 100, "GEG祖媽 Party Walk 啟動!", '#FF00FF', 150);
-            player.speed = 12; 
+            player.speed = 12; // 加速
             ent.active = false;
         }
         else if (ent.type === 'trigger_error') {
@@ -362,6 +374,7 @@
         mobileControls.classList.add('hidden');
     }
 
+    // --- 主迴圈邏輯 ---
     function update() {
         if (screenShake > 0) screenShake--;
 
@@ -390,9 +403,9 @@
                 entities.forEach(ent => {
                     if (ent.type === 'mushroom_enemy' && ent.active && checkCollision(pBox, ent)) {
                         if (player.sprite === 'party_walk' || player.sprite === 'dog') {
-                            ent.active = false; sfx.break(); screenShake = 5; 
+                            ent.active = false; sfx.break(); screenShake = 5; // 無敵撞飛
                         } else {
-                            blocked = true; 
+                            blocked = true; // 擋住
                         }
                     }
                 });
@@ -400,12 +413,13 @@
 
             if (!blocked) player.x = nextX;
             if (player.x > cameraX + canvas.width * 0.4) cameraX = player.x - canvas.width * 0.4;
-            if (player.x < cameraX) player.x = cameraX; 
+            if (player.x < cameraX) player.x = cameraX; // 不准後退超過鏡頭
 
             player.vy += player.gravity; player.y += player.vy;
             if (player.y + player.height > groundY) { player.y = groundY - player.height; player.vy = 0; player.isGrounded = true; }
             if (player.attackTimer > 0) player.attackTimer--; else player.isAttacking = false;
 
+            // 檢查事件觸發
             if (gameState === 'PLAYING') {
                 entities.forEach(ent => {
                     if (ent.type.startsWith('trigger') && !ent.done && player.x > ent.x) triggerEvent(ent);
@@ -414,7 +428,9 @@
         }
     }
 
+    // --- 繪製畫面 ---
     function draw() {
+        // 背景 (Pixelated)
         ctx.fillStyle = '#87CEEB'; ctx.fillRect(0, 0, canvas.width, canvas.height);
         
         ctx.save();
@@ -426,12 +442,14 @@
         }
         
         if (gameState === 'INTRO_2') {
+            // 彩光特效
             ctx.fillStyle = `hsl(${Date.now() % 360}, 100%, 50%)`; ctx.globalAlpha = 0.3;
             ctx.fillRect(0,0,canvas.width, canvas.height); ctx.globalAlpha = 1.0;
             drawImageSafely('sophie', canvas.width/2 - 100, canvas.height/2 - 100, 200, 200);
             ctx.restore(); return;
         }
 
+        // 遊戲場景捲動
         ctx.translate(-cameraX, 0);
 
         // 地板
@@ -440,6 +458,7 @@
         ctx.fillStyle = '#FFF'; ctx.font = '40px Courier New';
         ctx.fillText('☁️', cameraX*0.9 + 100, 150); ctx.fillText('☁️', cameraX*0.9 + 500, 100);
 
+        // 畫實體
         entities.forEach(ent => {
             if (ent.active) {
                 if (ent.type === 'mushroom_enemy') {
@@ -450,6 +469,7 @@
             }
         });
 
+        // 畫 Boss
         if (boss.active) {
             let bx = 5200; let by = groundY - 400; let bw = 400; let bh = 400;
             drawImageSafely('big_ben', bx, by, bw, bh);
@@ -457,6 +477,7 @@
             ctx.fillText('NOT THIS WAY', bx + bw/2, by + bh - 20);
         }
 
+        // 畫玩家
         let pFlip = keys.left && !keys.right;
         ctx.save();
         if (pFlip) { ctx.translate(player.x + player.width, player.y); ctx.scale(-1, 1); } 
@@ -471,8 +492,9 @@
         }
         ctx.restore();
 
-        ctx.restore(); 
+        ctx.restore(); // 恢復相機
 
+        // 畫 UI Popups (不隨相機移動，固定在螢幕上)
         popups.forEach(p => {
             ctx.globalAlpha = p.life / 60 > 1 ? 1 : p.life / 60;
             drawImageSafely(p.key, p.x, p.y, p.w, p.h);
@@ -490,6 +512,7 @@
         if (gameState !== 'WIN') requestAnimationFrame(gameLoop);
     }
     
+    // 初始化繪製
     draw();
 
 </script>
